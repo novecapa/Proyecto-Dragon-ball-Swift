@@ -10,12 +10,18 @@ import SwiftUI
 
 @Observable
 class LoginViewModel {
-    private let googleService = GoogleService()
-    
+
     var showError: Bool = false
     var errorMessage: String = ""
-    
-    @MainActor func signInWithGoogle(completion: @escaping(Bool) -> Void) {
+
+    private let googleService: GoogleServiceProtocol
+
+    init (googleService: GoogleServiceProtocol = GoogleService()) {
+        self.googleService = googleService
+    }
+
+    @MainActor
+    func signInWithGoogle(completion: @escaping(Bool) -> Void) {
         googleService.authenticate { result in
             switch result {
             case .success(let success):

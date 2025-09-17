@@ -9,15 +9,20 @@ import Foundation
 import Observation
 
 @Observable
-class FavoritesViewModel:@unchecked Sendable, CheractersProtocols {
-    private let favoriteCharactersDataBaseService = FavoriteCharacterDataBaseService()
+class FavoritesViewModel: @unchecked Sendable, CheractersProtocols {
 
     var favoriteCharactersIDs: [FavoriteCharacter] = []
-    var favoriteCharacters: [CharactersModel] = [] //Modelo con todos los datos de los personajes favoritos
+    var favoriteCharacters: [CharactersModel] = [] // Modelo con todos los datos de los personajes favoritos
     var isLoading: Bool = false
     var showError: Bool = false
     var errorMessage: String = ""
-    
+
+    private let favoriteCharactersDataBaseService: FavoriteCharacterDataBaseServieProtocol
+
+    init (favoriteCharactersDataBaseService: FavoriteCharacterDataBaseServieProtocol = FavoriteCharacterDataBaseService()) {
+        self.favoriteCharactersDataBaseService = favoriteCharactersDataBaseService
+    }
+
     /// Agrega un personaje a la lista de favoritos (en la memoria y en Firestore).
     ///
     /// Esta función realiza las siguientes acciones:
@@ -84,7 +89,7 @@ class FavoritesViewModel:@unchecked Sendable, CheractersProtocols {
     
     @MainActor
     func getFavoriteCharactersModels() async {
-        do{
+        do {
             let favoriteCharacterFromDB = try await getCharacters("dragonball")
             let favoriteCharacterFromDZ = try await getCharacters("dragonballz")
             let favoriteCharacterFromDGT = try await getCharacters("dragonballgt")
@@ -93,9 +98,7 @@ class FavoritesViewModel:@unchecked Sendable, CheractersProtocols {
             let favoriteCharacterIDsSet = Set(favoriteCharactersIDs.map { $0.characterID })
             let allCharacters = favoriteCharacterFromDB + favoriteCharacterFromDZ + favoriteCharacterFromDGT + favoriteCharacterFromDS + favoriteCharacterFromDBD
             favoriteCharacters = allCharacters.filter{ favoriteCharacterIDsSet.contains(Int($0.id))}
-        }catch{
-            
-        }
+        } catch {}
     }
     
     /// Verifica si un personaje está en la lista de favoritos.

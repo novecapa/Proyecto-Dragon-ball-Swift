@@ -10,11 +10,26 @@ import SwiftUI
 import Firebase
 import GoogleSignIn
 
+protocol GoogleServiceProtocol {
+    @MainActor
+    func authenticate(completion: @escaping(Result<Bool, Error>) -> Void)
+    func logout()
+}
 
-final class GoogleService {
+final class GoogleService: GoogleServiceProtocol {
+
     var showError = false
     var errorMessage: String = ""
     var navigateHome = false
+
+    private let clientID: String?
+    private let fbAuth: Auth
+
+    init(clientID: String? = FirebaseApp.app()?.options.clientID,
+         fbAuth: Auth = Auth.auth()) {
+        self.clientID = clientID
+        self.fbAuth = fbAuth
+    }
     
     /// Método para autenticar al usuario mediante Google Sign-In y Firebase.
     ///
@@ -26,7 +41,7 @@ final class GoogleService {
     ///     - `NSError(domain: "Authentication failed", code: 0, userInfo: nil)`: Indica que la autenticación con Google o Firebase falló.
     ///     - Cualquier otro error devuelto por el SDK de Google Sign-In o Firebase Auth.
     @MainActor func authenticate(completion: @escaping(Result<Bool, Error>) -> Void) {
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
+        guard let clientID else {
             completion(.failure(NSError(domain: "Falta el client ID de Firebase", code: 0, userInfo: nil)))
             return
         }
@@ -39,7 +54,7 @@ final class GoogleService {
             return
         }
         
-        GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC) { user, error in
+        GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC) { [weak self] user, error in
             if let error = error {
                 print(error.localizedDescription)
                 //Si el usuario cancela la acción de inciar con google se devuelve un false
@@ -54,7 +69,7 @@ final class GoogleService {
             
             let credential = GoogleAuthProvider.credential(withIDToken: idToken.tokenString, accessToken: authentication.accessToken.tokenString)
             
-            Auth.auth().signIn(with: credential) { authResult, error in
+            self?.fbAuth.signIn(with: credential) { authResult, error in
                 if let error = error {
                     completion(.failure(error))
                 } else {
@@ -66,7 +81,7 @@ final class GoogleService {
     
     func logout() {
         do {
-            try Auth.auth().signOut()
+            try fbAuth.signOut()
         } catch let signOutError as NSError {
             print("Error signing out: %@", signOutError)
         }

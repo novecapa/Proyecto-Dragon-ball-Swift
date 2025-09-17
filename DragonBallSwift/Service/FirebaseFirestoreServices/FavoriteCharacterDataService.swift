@@ -10,12 +10,29 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 
-final class FavoriteCharacterDataBaseService {
-    private let database = Firestore.firestore()
-    private let uid = Auth.auth().currentUser?.uid ?? ""
-    private let usersCollection = "users"
-    private let favoriteCharactersCollection = "favoriteCharacters"
-    
+protocol FavoriteCharacterDataBaseServieProtocol: Sendable {
+    func addToFavorites(character: FavoriteCharacter) async throws
+    @MainActor
+    func getFavorites() async throws  -> [FavoriteCharacter]
+    func deleteFavoriteCharacter(characterID: Int) async throws
+}
+
+final class FavoriteCharacterDataBaseService: FavoriteCharacterDataBaseServieProtocol {
+
+    private enum Constants {
+        static let usersCollection = "users"
+        static let favoriteCharactersCollection = "favoriteCharacters"
+    }
+
+    private let database: Firestore
+    private let uid: String
+
+    init(database: Firestore = Firestore.firestore(),
+         uid: String = Auth.auth().currentUser?.uid ?? "") {
+        self.database = database
+        self.uid = uid
+    }
+
     /// Agrega un personaje a la lista de favoritos del usuario en Firestore.
     /// - Parameters:
     ///     - character: El modelo personaje favorito `FavoriteCharacter` que se agregará a los favoritos.
@@ -23,7 +40,12 @@ final class FavoriteCharacterDataBaseService {
     func addToFavorites(character: FavoriteCharacter) async throws {
         do {
             let characterID = String(character.characterID)
-            try await database.collection(usersCollection).document(uid).collection(favoriteCharactersCollection).document(characterID).setData(character.dictionary)
+            try await database
+                .collection(Constants.usersCollection)
+                .document(uid)
+                .collection(Constants.favoriteCharactersCollection)
+                .document(characterID)
+                .setData(character.dictionary)
         } catch {
             throw error
         }
@@ -35,7 +57,11 @@ final class FavoriteCharacterDataBaseService {
     @MainActor
     func getFavorites() async throws  -> [FavoriteCharacter] {
         do {
-            let snapshot = try await database.collection(usersCollection).document(uid).collection(favoriteCharactersCollection).getDocuments()
+            let snapshot = try await database
+                .collection(Constants.usersCollection)
+                .document(uid)
+                .collection(Constants.favoriteCharactersCollection)
+                .getDocuments()
             let documents = snapshot.documents
             let favorites = documents.map { try! $0.data(as: FavoriteCharacter.self) }.compactMap { $0 }
             
@@ -53,7 +79,11 @@ final class FavoriteCharacterDataBaseService {
     func deleteFavoriteCharacter(characterID: Int) async throws {
         do {
             let characterID = String(characterID)
-            try await database.collection(usersCollection).document(uid).collection(favoriteCharactersCollection).document(characterID).delete()
+            try await database
+                .collection(Constants.usersCollection)
+                .document(uid)
+                .collection(Constants.favoriteCharactersCollection)
+                .document(characterID).delete()
         } catch {
             throw error
         }
